@@ -13,51 +13,61 @@
 #include <chrono>
 
 using namespace std;
-
 const int TOTAL_THREADS		=20;
-bool bDoWork 		= true;
 
-//void thrdfunc(int i){
+//global to control threads
+bool bDoWork = true;
+
+
 void thrdfunc(){
 	//lets get this threads id
-	 std::thread::id this_id  = std::this_thread::get_id();
+	thread::id this_id = this_thread::get_id();
 	
-	//does the following need protection?
-	//if you dont care about a few extra cycles 
-	//(as is the case for UI loops) then no
-	while(bDoWork){	
-//		std::cout<<"In thread:"<<std::to_string(i)<<std::endl;												//avoid the unweildly GUID
-//		std::cout<<"In thread:"<<this_id<<std::endl;	//can also do std::to_string(i) to 
+	//one way to stop threads is by checking on a flag
+	//thats contolled by another thread
+	//this is called busy waiting and can KILL performance
+	//(spike CPU usage) if you spend too much time polling 
+	//the flag value
+	//you are much better off using condition variables
+	//
+	while(bDoWork){		
+		//do some work
+		cout<<"In thread:"<<this_id<<endl;
 		
-		//snooze for a bit to simulate work
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));	
+		//simulated work 
+		this_thread::sleep_for(chrono::milliseconds(10));
 	}
-//	std::cout<<"Thread:"<<std::to_string(i)<<" exiting"<<std::endl;
-	std::cout<<"Thread:"<<this_id<<" exiting"<<std::endl;	
+	
+	//cleanup and exit
+	cout<<"      EXITING:"<<this_id<<endl;
 }
 
-int main(){
-	
-	//create a bunch of threads
-	std::vector<std::thread> threads;
-	for(int i = 0; i < 20; ++i){
-//		threads.push_back(std::thread(thrdfunc,i));
-		threads.push_back(std::thread(thrdfunc));
+//show starting a bunch of threads
+int main()
+{
+	std::vector<std::thread> vecThreads;
+
+	//how many cores (2 virtual cores per physical core)
+	int numbThreads = std::thread::hardware_concurrency();
+
+	//lets start up 1 per core
+	for (int i=0;i<numbThreads/2;i++){
+		vecThreads.push_back(std::thread(thrdfunc));
 	}
-	
 
 	//let em run a bit (90 seconds)
-	std::this_thread::sleep_for(std::chrono::milliseconds(90000));
-	
+	this_thread::sleep_for(chrono::milliseconds(90000));
+
 	//ask them all to stop
 	bDoWork = false;
-	
-	//wait for em to finish
-	for(auto& thread : threads){
-		thread.join();
-	}
 
+	//wait for em to finish
+	for(auto& t : vecThreads){
+		t.join();
+	}
+	
 	cout<<"All threads done!"<<endl;
 
 	return 0;
 }
+
